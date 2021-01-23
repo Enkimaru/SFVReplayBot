@@ -1,43 +1,30 @@
 require('./functions.js')();
+require('./client.js')();
 
-const tmi = require('tmi.js');
-const fs = require('fs');
-const queueFile = './queue.txt';
+fs = require('fs');
+
 const firstline = require('firstline');
 
-const client = new tmi.Client({
-	options: { debug: true, messagesLogLevel: "info" },
-	connection: {
-		reconnect: true,
-		secure: true
-	},
-	identity: {
-		username: 'SFVReplayBot',
-		password: 'oauth:1iw3w2xfwixe4wrtuoaq4o2sigwk4g'
-	},
-	channels: [ 'keomapacheco' ]
-});
 client.connect().catch(console.error);
 
-
-
-
-console.log(`Watching for file changes on ${queueFile}`);
+loadQueueFromFile(queueFile)
 
 fs.watchFile(queueFile, (curr,prev) => {
     firstline(queueFile).then(line => {
-        if (line === "") {
-            console.log("Vazio")
+        const match = /\r|\n/.exec(line);
+        if (match || line === "") {
             updateReplayList(client, client.channels[0]);
         }
     });
 })
 
+
+console.log(`Watching for file changes on ${queueFile}`);
+
 client.on('message', (channel, tags, message, self) => {
         if(self || message[0] !== '!') return;
-        
         if(message.toLowerCase().startsWith('!replay')) {
-            if (filaAberta == false) {
+            if (queueOpen == false) {
                 client.say(channel, 'A fila de replays está fechada!')
             } else {
                 if (tags.badges.broadcaster == 1 || tags.subscriber == true) {
@@ -62,14 +49,22 @@ client.on('message', (channel, tags, message, self) => {
 
         } else if (message.toLowerCase() === '!abrir'){
             if (tags.badges.broadcaster == 1) {
-                filaAberta = true;
-                client.say(channel, `A fila de replays está aberta!`);
+                if(queueOpen == true) {
+                    client.say(channel, `Isso, abra a fila já aberta 4Head`); 
+                } else {
+                    queueOpen = true;
+                    client.say(channel, `A fila de Replays está aberta.`);
+                }
             }
 
         } else if (message.toLowerCase() === '!fechar'){
             if (tags.badges.broadcaster == 1) {
-                filaAberta = false;
-                client.say(channel, `A fila de replays fechou!`);
+                if(queueOpen == false) {
+                    client.say(channel, `Os portões já estão fechados.`); 
+                } else {
+                    queueOpen = false;
+                    client.say(channel, `A fila de replays fechou!`);
+                }
             }
 
         } else if (message.toLowerCase() === '!prox'){
@@ -81,15 +76,32 @@ client.on('message', (channel, tags, message, self) => {
                 if (leaveFromReplayList(tags) == 1) {
                     client.say(channel, `@${tags.username}, você saiu da fila!`);
                 } else {
-                    client.say(channel, `@${tags.username}, você não está fila!`); 
+                    client.say(channel, `@${tags.username}, você está tentando sair de uma fila que não entrou Pepega!`); 
                 }
-        } 
 
+        } else if (message.toLowerCase() === '!pos'){
+                var userIndex = findUserOnReplayList(tags.username);
+                if (userIndex >= 0) {
+                    client.say(channel, `@${tags.username}, você está na posição Nº${userIndex+1} com o replay ${replayList[userIndex].replayId}`);
+                } else {
+                    client.say(channel, `@${tags.username}, você não está na fila!`)
+                }
+        } else if (message.toLowerCase() === '!carregar'){
+            if (tags.badges.broadcaster == 1) {
+                loadQueueFromFile(queueFile);
+                client.say(channel, `Carregando fila pelo arquivo.`)
+            }
+
+        } else if (message.toLowerCase() === '!limpar'){
+            if (tags.badges.broadcaster == 1) {
+                clearQueue();
+            }
+        }
 });
 
 client.on('redeem', (channel, username, rewardType, tags, message) => {
     if (rewardType == replayRewardId) {
-        if (filaAberta == false) {
+        if (queueOpen == false) {
                 client.say(channel, 'A fila de replays está fechada!')
         } else {
         var replayId = message.toUpperCase();

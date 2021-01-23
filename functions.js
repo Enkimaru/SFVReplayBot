@@ -1,20 +1,14 @@
-fs = require('fs');
-
 module.exports = function() { 
     this.replayList = [];
-    this.queueSubscriberPriority = 2;
-    this.filaAberta = false;
-    this.replayRewardId = '0f3463c2-c631-4ca2-9f5e-4c936a9e6c13';
-
 
     this.addReplayToList = function (replayId, tags){
-        var replay = {username: tags.username, displayName: tags["display-name"], replayId: replayId, subscriber: tags.subscriber}
-        var userIndex = findUserOnReplayList(tags.username);
+        let replay = {username: tags.username, displayName: tags["display-name"], replayId: replayId, subscriber: tags.subscriber}
+        let userIndex = findUserOnReplayList(tags.username);
 
         if (userIndex >= 0) {
             replayList.splice(userIndex, 1, replay);
         } else if (tags.subscriber == true && queueSubscriberPriority >= 0) {
-            var position = findLastSubscriberPosition();
+            let position = findLastSubscriberPosition();
             if (position == -1) {
             replayList.splice(0, 0, replay);
             } else {
@@ -26,9 +20,9 @@ module.exports = function() {
         updateQueueFile();
 
     }
-
+    
     this.leaveFromReplayList = function (tags){
-        var userIndex = findUserOnReplayList(tags.username);
+        let userIndex = findUserOnReplayList(tags.username);
 
         if (userIndex >= 0) {
             replayList.splice(userIndex, 1);
@@ -42,12 +36,16 @@ module.exports = function() {
     this.replayCheck = function (replayString) {
         
         if (replayString.length != 9) {
-            return "o replay deve conter 9 caracteres!"
+            return "O replay deve conter 9 caracteres! Verifique a ID e tente novamente."
         }
 
-        var replayHex = parseInt(replayString,16);
+        if (replayString[0] == 0) {
+            return "O replay não pode começar com 0! Verifique a ID e tente novamente."
+        }
+        let replayHex = parseInt(replayString,16);
+
         if (replayHex.toString(16) != replayString.toLowerCase()){
-            return "o replay parece ter caracteres inválidos!"
+            return "O Replay possui caracteres inválidos! Verifique a ID e tente novamente."
         }
 
         return replayString
@@ -68,7 +66,7 @@ module.exports = function() {
     }
 
     this.getQueueString = function () {
-        var stringQueue = '════Fila de Replays════ ';
+        let stringQueue = '════Fila de Replays════ ';
         console.log(replayList.length)
         replayList.forEach((element, index) => {
             stringQueue = stringQueue.concat(' — ' + (index+1) + ':•' + element.displayName + '' )
@@ -81,9 +79,8 @@ module.exports = function() {
         var stringQueue = '';
         replayList.forEach((element, index) => {
             stringQueue = stringQueue.concat(element.replayId + ' - ' + element.displayName)
-            stringQueue = stringQueue.concat(((element.subscriber == true) ? " *Sub*": "") + '\n')
+            stringQueue = stringQueue.concat(((element.subscriber == true) ? "*": "") + '\n')
         });
-        //stringQueue = stringQueue.concat("- Fim da Lista -")
         fs.writeFile('queue.txt', stringQueue, function (err) {
             if (err) return console.log(err);
                 console.log('Lista atualizada');
@@ -92,13 +89,40 @@ module.exports = function() {
 
     this.updateReplayList = function (client, channel) {
         if (replayList.length > 0) {
-            var nextOnQueue = replayList[0];
+            let nextOnQueue = replayList[0];
             client.say(channel, `O próximo da fila é o @${nextOnQueue.username}, com o replay:
             ${nextOnQueue.replayId}`);
-        
             replayList.splice(0, 1);
+            updateQueueFile();
         } else {
             client.say(channel, `A fila está vazia!`);
         }
     }
+
+    this.loadQueueFromFile = function (queueFile) {
+        fs.readFileSync(queueFile, 'utf-8').split(/\r?\n/).forEach(function(line) {
+            if (line != '') {
+                let replayId = line.substring(0,9).toUpperCase();
+                let replayUsername = line.substring(12);
+                let replaySubscriber = false;
+                let subCheck = replayUsername.search(/\*/g);
+
+                if (subCheck >= 0){
+                    replaySubscriber = true;
+                    replayUsername = replayUsername.split('*')[0]
+                }
+                let tags = {username: replayUsername.toLowerCase(), 'display-name': replayUsername, subscriber: replaySubscriber}
+                addReplayToList(replayId, tags)
+            }
+        });
+    }
+
+    this.clearQueue = function () {
+        replayList = [];
+        fs.writeFile(queueFile, "", function (err) {
+                if (err) return console.log(err);
+                console.log('Lista atualizada');
+        });
+    }
+        
 }
