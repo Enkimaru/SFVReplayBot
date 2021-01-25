@@ -1,5 +1,6 @@
 module.exports = function() { 
     this.replayList = [];
+    this.subscriberSpotSkip = 0;
 
     this.addReplayToList = function (replayId, tags){
         let replay = {username: tags.username, displayName: tags["display-name"], replayId: replayId, subscriber: tags.subscriber}
@@ -9,11 +10,13 @@ module.exports = function() {
             replayList.splice(userIndex, 1, replay);
         } else if (tags.subscriber == true && queueSubscriberPriority >= 0) {
             let position = findLastSubscriberPosition();
+           
             if (position == -1) {
-            replayList.splice(0, 0, replay);
+                replayList.splice(subscriberSpotSkip, 0, replay);
             } else {
-            replayList.splice(position + queueSubscriberPriority + 1, 0, replay);
-            }      
+                replayList.splice(position + queueSubscriberPriority + 1, 0, replay);
+            }  
+
         } else {
             replayList.push(replay);
         }
@@ -92,6 +95,15 @@ module.exports = function() {
             let nextOnQueue = replayList[0];
             client.say(channel, `O próximo da fila é o @${nextOnQueue.username}, com o replay:
             ${nextOnQueue.replayId}`);
+            
+            if (nextOnQueue.subscriber == true) {
+                if (queueSubscriberPriority > 0) {
+                    subscriberSpotSkip = queueSubscriberPriority;
+                }  
+            } else if (subscriberSpotSkip > 0) {
+                subscriberSpotSkip--;
+            }
+                        
             replayList.splice(0, 1);
             updateQueueFile();
         } else {
