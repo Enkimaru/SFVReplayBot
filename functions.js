@@ -1,28 +1,41 @@
 module.exports = function() { 
     this.replayList = [];
     this.subscriberSpotSkip = 0;
+    this.isStreamer = false;
+    this.isMod = false;
+    this.isSub = false;
 
-    this.addReplayToList = function (replayId, tags){
-        let replay = {username: tags.username, displayName: tags["display-name"], replayId: replayId, subscriber: tags.subscriber}
+    this.addReplay = function (replayId, tags, message) {
+        replayId = replaceZeros(replayId);
+        if (replayCheck(replayId) === true){
+            addReplayToList(replayId, tags, message)
+        };
+    }
+
+    this.addReplayToList = function (replayId, tags, message){
+        let replay = {username: tags.username, displayName: tags["display-name"], replayId: replayId, subscriber: tags.subscriber, message: message}
         let userIndex = findUserOnReplayList(tags.username);
-
+        let queuePosition = 0;
         if (userIndex >= 0) {
             replayList.splice(userIndex, 1, replay);
+            queuePosition = userIndex + 1;
         } else if (tags.subscriber == true && queueSubscriberPriority >= 0) {
             let position = findLastSubscriberPosition();
            
             if (position == -1) {
-                replayList.splice(subscriberSpotSkip, 0, replay);
+               queuePosition = replayList.splice(subscriberSpotSkip, 0, replay);
             } else {
-                replayList.splice(position + queueSubscriberPriority + 1, 0, replay);
+               queuePosition = replayList.splice(position + queueSubscriberPriority + 1, 0, replay);
             }  
 
         } else {
-            replayList.push(replay);
+           queuePosition = replayList.push(replay);
         }
         updateQueueFile();
+        sendChatMessage(`@${tags.username}, replay com ID: ${replayId} adicionado na fila na posição ${queuePosition}.`);
 
     }
+    
     
     this.leaveFromReplayList = function (tags){
         let userIndex = findUserOnReplayList(tags.username);
@@ -37,21 +50,20 @@ module.exports = function() {
     }
 
     this.replayCheck = function (replayString) {
-        
         if (replayString.length != 9) {
-            return "O replay deve conter 9 caracteres! Verifique a ID e tente novamente."
+          return sendChatMessage("O replay deve conter 9 caracteres! Verifique a ID e tente novamente.")
         }
 
         if (replayString[0] == 0) {
-            return "O replay não pode começar com 0! Verifique a ID e tente novamente."
+          return sendChatMessage("O replay não pode começar com 0! Verifique a ID e tente novamente.")
         }
         let replayHex = parseInt(replayString,16);
 
         if (replayHex.toString(16) != replayString.toLowerCase()){
-            return "O Replay possui caracteres inválidos! Verifique a ID e tente novamente."
+           return sendChatMessage("O Replay possui caracteres inválidos! Verifique a ID e tente novamente.")
         }
 
-        return replayString
+        return true
     }
 
     this.replaceZeros = function (replayString) {
@@ -81,7 +93,7 @@ module.exports = function() {
     this.updateQueueFile = function () {
         var stringQueue = '';
         replayList.forEach((element, index) => {
-            stringQueue = stringQueue.concat(element.replayId + ' - ' + element.displayName)
+            stringQueue = stringQueue.concat(element.replayId + ' - ' + element.displayName + '                       | ' + element.message)
             stringQueue = stringQueue.concat(((element.subscriber == true) ? "*": "") + '\n')
         });
         fs.writeFile('queue.txt', stringQueue, function (err) {
@@ -90,10 +102,10 @@ module.exports = function() {
         });
     }
 
-    this.updateReplayList = function (client, channel) {
+    this.updateReplayList = function () {
         if (replayList.length > 0) {
             let nextOnQueue = replayList[0];
-            client.say(channel, `O próximo da fila é o @${nextOnQueue.username}, com o replay:
+            sendChatMessage(`O próximo da fila é o @${nextOnQueue.username}, com o replay:
             ${nextOnQueue.replayId}`);
             
             if (nextOnQueue.subscriber == true) {
@@ -107,7 +119,7 @@ module.exports = function() {
             replayList.splice(0, 1);
             updateQueueFile();
         } else {
-            client.say(channel, `A fila está vazia!`);
+            sendChatMessage(`A fila está vazia!`);
         }
     }
 
@@ -136,5 +148,24 @@ module.exports = function() {
                 console.log('Lista atualizada');
         });
     }
-        
+
+    this.checkRoles = function (tags) {
+        if(tags.badges) {
+            isSub = 'subscriber' in tags.badges || 'founder' in tags.badges;
+            isStreamer = 'broadcaster' in tags.badges;
+            isMod = 'moderator' in tags.badges;
+        }
+    }
+   this.checkCommand = function (length, paramNumber) {
+       if (length != paramNumber) {
+        sendChatMessage(`Comando com número de parâmetros errados!`);
+        return true;
+       }
+       return false;
+    }
+
+    this.sendChatMessage = function (message) {
+        client.say("#" + channel, message);
+    }
+
 }
