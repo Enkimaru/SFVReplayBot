@@ -6,14 +6,19 @@ fs = require('fs');
 const firstline = require('firstline');
 
 client.connect().catch(console.error);
+
 loadQueueFromFile(queueFile)
 
 fs.watchFile(queueFile, (curr,prev) => {
+
     firstline(queueFile).then(line => {
+
         const match = /\r|\n/.exec(line);
+
         if (match || line === "") {
             updateReplayList();
         }
+
     });
 })
 
@@ -36,7 +41,6 @@ client.on('message', (channel, tags, message, self) => {
                         let replayId = replayCommand[2].toUpperCase();
                         let tags = {username: replayCommand[3].toLowerCase(), "display-name": replayCommand[3], subscriber: false}
                         additionalMessage = checkAdditionalMessage(message,replayCommand[4])
-
 
                         addReplay(replayId, tags, additionalMessage);
                         

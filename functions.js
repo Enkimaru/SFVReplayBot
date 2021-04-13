@@ -93,8 +93,8 @@ module.exports = function() {
     this.updateQueueFile = function () {
         var stringQueue = '';
         replayList.forEach((element, index) => {
-            stringQueue = stringQueue.concat(element.replayId + ' - ' + element.displayName + '                       | ' + element.message)
-            stringQueue = stringQueue.concat(((element.subscriber == true) ? "*": "") + '\n')
+            stringQueue = stringQueue.concat(element.replayId + ' - ' + element.displayName)
+            stringQueue = stringQueue.concat(((element.subscriber == true) ? "*": "")  + '                                      | ' + element.message + '\n')
         });
         fs.writeFile('queue.txt', stringQueue, function (err) {
             if (err) return console.log(err);
@@ -170,7 +170,7 @@ module.exports = function() {
 
     this.checkAdditionalMessage = function (message, param) {
         if (param){
-            return message.substr(message.indexOf(replayCommand[4]))
+            return message.substr(message.indexOf(param))
         }
         return ""
     }
