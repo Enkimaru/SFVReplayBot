@@ -24,7 +24,8 @@ client.on('message', (channel, tags, message, self) => {
         if(self || message[0] !== '!') return;
 
         checkRoles(tags);
-        
+        let additionalMessage = "";
+
         if(message.toLowerCase().startsWith('!replay')) {
             if (queueOpen == false) {
                 sendChatMessage('A fila de replays está fechada!')
@@ -34,7 +35,8 @@ client.on('message', (channel, tags, message, self) => {
                     if (replayCommand[1] === "add") {
                         let replayId = replayCommand[2].toUpperCase();
                         let tags = {username: replayCommand[3].toLowerCase(), "display-name": replayCommand[3], subscriber: false}
-                        let additionalMessage = message.substr(message.indexOf(replayCommand[4]))
+                        additionalMessage = checkAdditionalMessage(message,replayCommand[4])
+
 
                         addReplay(replayId, tags, additionalMessage);
                         
@@ -46,14 +48,15 @@ client.on('message', (channel, tags, message, self) => {
                         //changeReplayOrder(channel)
                     } else {
                         let replayId = replayCommand[1].toUpperCase();
-                        let additionalMessage = message.substr(message.indexOf(replayCommand[2]))
+
+                        additionalMessage = checkAdditionalMessage(message,replayCommand[2])
 
                         addReplay(replayId, tags, additionalMessage);
                     }
                 }
                 else if (isSub) {
                         let replayId = replayCommand[1].toUpperCase();
-                        let additionalMessage = message.substr(message.indexOf(replayCommand[2]))
+                        additionalMessage = checkAdditionalMessage(message,replayCommand[2])
 
                         addReplay(replayId, tags, additionalMessage);
                 } else {
@@ -125,7 +128,8 @@ client.on('redeem', (channel, username, rewardType, tags, message) => {
         
         let replayCommand = message.split(" ");
         let replayId = replayCommand[0].toUpperCase();
-        let additionalMessage = message.substr(message.indexOf(replayCommand[1]))
+        
+        additionalMessage = checkAdditionalMessage(message,replayCommand[1])
 
         addReplay(replayId, tags, additionalMessage);           
     }}

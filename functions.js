@@ -168,4 +168,11 @@ module.exports = function() {
         client.say("#" + channel, message);
     }
 
+    this.checkAdditionalMessage = function (message, param) {
+        if (param){
+            return message.substr(message.indexOf(replayCommand[4]))
+        }
+        return ""
+    }
+
 }
